@@ -82,22 +82,21 @@ var matrix = [
 	[1, '', 5, '', '', '', '', 2, '']
 ];
 
-var start = new Date();
-var solution = solve(matrix);
-
-if (!checkSolution(solution)) {
-	solution = solvePossibilities( solution );
-}
-
 function loadMatrix() {
-	printMatrix(solution);
+	var sudoku = SudokuJS(matrix);
+
+	console.table( sudoku );
+
+	var solved = solveSingles( sudoku );
+
+	trimmed = narrowPossibilities( solved );
+
+	printMatrix(trimmed);
 }
 
 //////////////////////////////////////////
 // helper methods
 //
-
-function Point(x, y) { return { x: x, y: y }; }
 
 function printMatrix( matrix ) {
 	var outTable = document.getElementById('outTable');
@@ -107,162 +106,135 @@ function printMatrix( matrix ) {
 			var cell = row.getElementsByTagName('td')[j];
 			var val = matrix[i][j];
 			if (val.length > 1) {
-				val = '<span style="color:#f00">' + val + '</span>';
+				val = '<span style="color:#f00;font-size:8px">' + val + '</span>';
 			}
 			cell.innerHTML = val;
 		}
 	}
 }
 
-function solvePossibilities( matrix ) {
-	var newSolution = false;
+Array.prototype.diff = function(a) {
+    return this.filter(function(i) {return a.indexOf(i) < 0;});
+};
+
+function SudokuJS( matrix ) {
+	var cellPossibleValues = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+	var result = [];
+
 	for (var i = 0; i < matrix.length; i++) {
-		for(var j = 0; j < matrix[i].length; j++) {
-			var cur = get(Point(j, i));
-			if (cur != '') {
-				continue;
-			}
-			var diversity = unique(getCellDiversity(Point(j, i)));
-			var possibleValues = diff(validMoves, diversity);
-			if (possibleValues.length == 1) {
-				newSolution = true;
-				matrix[i][j] = possibleValues[0];
-			}
-			else if (possibleValues.length >= 2) {
-				matrix[i][j] = possibleValues;
-			}
-		}
-	}
-	if (newSolution) {
-		return solve(matrix);
-	}
-	else {
-		return matrix;
-	}
-}
-
-function solve( matrix ) {
-	var newSolution = false;
-	for (var i = 0; i < matrix.length; i++) {
-		for(var j = 0; j < matrix[i].length; j++) {
-			var cur = get(Point(j, i));
-			if (cur != '') {
-				continue;
-			}
-			var diversity = unique(getCellDiversity(Point(j, i)));
-			var possibleValues = diff(validMoves, diversity);
-			if (possibleValues.length == 1) {
-				newSolution = true;
-				matrix[i][j] = possibleValues[0];
-			}
-		}
-	}
-	if (newSolution) {
-		return solve(matrix);
-	}
-	else {
-		return matrix;
-	}
-}
-
-function get( point ) {
-	return matrix[point.y][point.x];
-}
-
-function diff( array1, array2 ) {
-	var ret = [];
-	for(var i = 0; i < array1.length; i++) {
-		var found = false;
-		for(var j = 0; j < array2.length; j++) {
-			if (array1[i] == array2[j]) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			ret.push( array1[i] );
-		}
-	}
-	return ret;
-}
-
-function checkSolution( matrix ) {
-	return (check(matrix) 
-		&& check(transpose(matrix)));
-}
-
-function check( matrix ) {
-	var rowSum = sigmaN( matrix[0].length );
-	for (var i = 0; i < matrix[0].length; i++) {
-		var sum = 0;
+		result.push([]);
 		for (var j = 0; j < matrix[i].length; j++) {
-			sum += matrix[i][j];
-		}
-		if (sum != rowSum) {
-			return false;
-		}
-	}
-	return true;
-}
-
-function sigmaN( num ) {
-	var ret = 0;
-	for( var i = 1; i <= num; ret += i, i++)
-		;
-	return ret;
-}
-
-function getCellDiversity( point ) {
-	/* get X, Y givens */
-	var givensX = [], givensY = [];
-	for (var i = 0; i < matrix[0].length; i++) {
-		if (matrix[point.y][i] != '') {
-			givensX.push( matrix[point.y][i] );
-		}
-		if (matrix[i][point.x] != '') {
-			givensY.push( matrix[i][point.x] );
+			result[i].push(
+				(matrix[i][j] == 0) ? cellPossibleValues : [matrix[i][j]]
+			);
 		}
 	}
-	/* get Block */
-	var givensBlock = getNBlock( point );
-	//console.log({ x: givensX, y: givensY, z: givensBlock });
-	return quickSort(givensX.concat(givensY, givensBlock));
+	return result;
 }
 
-function unique( array ) {
-	var ret = [];
-	for (var i = 0, j = -1; i < array.length; i++) {
-		if (ret[j] != array[i]) {
-			ret.push(array[i]);
-			j++;
+function solveSingles( inMatrix ) {
+	var matrix = inMatrix.splice(0);
+	var updated = false;
+	for (var i = 0; i < matrix.length; i++) {
+		for (var j = 0; j < matrix[i].length; j++) {
+			var pivot = matrix[i][j];
+			var buddiesObj = getBuddies(matrix, Point(j, i));
+
+			var rowX = [], rowY = [], block = [];
+			for(var c = 0; c < buddiesObj.x.length; c++) {
+				if (buddiesObj.x[c].length == 1) {
+					rowX.push(buddiesObj.x[c]);
+				}
+			}
+
+			for(var c = 0; c < buddiesObj.y.length; c++) {
+				if (buddiesObj.y[c].length == 1) {
+					rowY.push(buddiesObj.y[c]);
+				}
+			}
+
+			for(var c = 0; c < buddiesObj.block.length; c++) {
+				if (buddiesObj.block[c].length == 1) {
+					block.push(buddiesObj.block[c]);
+				}
+			}
+
+			rowX = unique(quickSort(rowX));
+			rowY = unique(quickSort(rowY));
+			block = unique(quickSort(block));
+
+			var combined = rowX.concat(rowY, block);
+			var possibleValues = matrix[i][j].diff(unique(quickSort(combined)));
+
+			if (possibleValues.length == 1 && matrix[i][j].length > 1) {
+				matrix[i][j] = [possibleValues[0]];
+				updated = true;
+			}
 		}
 	}
-	return ret;	
+
+	if (updated) {
+		return solveSingles( matrix );
+	}
+
+	return matrix;
 }
 
-function quickSort( array ) {
-	if (array.length < 1) {
-		return array;
-	}
-	var left = [], right = [], pivot = array[0];
-	for (var i = 1; i < array.length; i++) {
-		if (array[i] < pivot) {
-			left.push(array[i]);
-		}
-		else {
-			right.push(array[i]);
-		}
-	}
-	return quickSort(left).concat(pivot, quickSort(right));
+function narrowPossibilities( inMatrix ) {
+	var matrix = inMatrix.splice(0);
+	return matrix;
 }
 
-function getNBlock( point ) {
+function getBuddies( matrix, point ) {
+	var rowX = [], rowY = [], block = [];
+	var y = point.y, x = point.x;
+	for(var i = 0; i < matrix[y].length; i++) {
+		rowX.push(matrix[y][i]);	
+		rowY.push(matrix[i][x]);
+	}
+	block = getNBlock( matrix, getNBlockPoint( point ) );
+	return {
+		x: rowX,
+		y: rowY,
+		block: block
+	}
+}
+
+function getBuddiesRef( matrix, point ) {
+	var rowX = [], rowY = [], block = [];
+	var y = point.y, x = point.x;
+	for(var i = 0; i < matrix[y].length; i++) {
+		rowX.push(Point(i, y));	
+		rowY.push(Point(x, i));
+	}
+	block = getNBlockRef( matrix, getNBlockPoint( point ) );
+	return {
+		x: rowX,
+		y: rowY,
+		block: block
+	}	
+}
+
+function getNBlock( matrix, point ) {
 	var coord = getNBlockPoint( point );
 	var ret = [];
 	for (var i = coord.y, ilim = (coord.y + 3); i < ilim; i++) {
 		for (var j = coord.x, jlim = (coord.x + 3); j < jlim; j++) {
 			if (matrix[i][j] != '') {
 				ret.push(matrix[i][j]);
+			}
+		}
+	}
+	return ret;
+}
+
+function getNBlockRef( matrix, point ) {
+	var coord = getNBlockPoint( point );
+	var ret = [];
+	for (var i = coord.y, ilim = (coord.y + 3); i < ilim; i++) {
+		for (var j = coord.x, jlim = (coord.x + 3); j < jlim; j++) {
+			if (matrix[i][j] != '') {
+				ret.push(Point(j, i));
 			}
 		}
 	}
@@ -305,6 +277,40 @@ function getNBlockPoint( point ) {
 	}
 }
 
+function unique( array ) {
+	var ret = [];
+	for (var i = 0, j = -1; i < array.length; i++) {
+		if (ret[j] != array[i]) {
+			ret.push(array[i]);
+			j++;
+		}
+	}
+	return ret;	
+}
+
+function quickSort( array ) {
+	if (array.length < 1) {
+		return array;
+	}
+	var left = [], right = [], pivot = array[0];
+	for (var i = 1; i < array.length; i++) {
+		if (array[i] < pivot) {
+			left.push(array[i]);
+		}
+		else {
+			right.push(array[i]);
+		}
+	}
+	return quickSort(left).concat(pivot, quickSort(right));
+}
+
+function Point( x, y ) {
+	return {
+		x: x, 
+		y: y
+	}
+}
+
 function transpose( array ) {
 	return array[0].map(function(col, i) { 
 		return array.map(function(row) { 
@@ -312,6 +318,7 @@ function transpose( array ) {
 		})
 	});
 }
+
 </script>
 <style>
 table {
@@ -341,9 +348,9 @@ table tr:nth-child(6) td {
 
 <table id="outTable">
 	<tr>
-		<td>1</td>
-		<td>2</td>
-		<td>3</td>
+		<td></td>
+		<td></td>
+		<td></td>
 		<td></td>
 		<td></td>
 		<td></td>
