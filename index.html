@@ -92,11 +92,33 @@ function loadMatrix() {
 	trimmed = narrowPossibilities( solved );
 
 	printMatrix(trimmed);
+
+	var elements = document.getElementsByTagName('td');
+	for(var i = 0, len = elements.length; i < len; i++) {
+	    elements[i].onclick = function () {
+	    	var coord = Point( this.cellIndex, this.parentNode.rowIndex );
+	    	highlightMatrix( trimmed, coord );
+	    }
+	}
 }
 
 //////////////////////////////////////////
 // helper methods
 //
+
+function highlightMatrix( matrix, point ) {
+	//background: #77EC6F;
+	var buddiesRef = getBuddiesRef( matrix, point );
+	var cell = document.getElementsByClassName('cell_' + point.x + 'x' + point.y)[0];
+
+	var elements = document.getElementsByTagName('td');
+	for(var i = 0, len = elements.length; i < len; i++) {
+		var name = elements[i].className.replace('/highlighted/', '');
+		console.log(name);
+	}
+
+	cell.className = cell.className + ' highlighted';
+}
 
 function printMatrix( matrix ) {
 	var outTable = document.getElementById('outTable');
@@ -109,6 +131,7 @@ function printMatrix( matrix ) {
 				val = '<span style="color:#f00;font-size:8px">' + val + '</span>';
 			}
 			cell.innerHTML = val;
+			cell.className = "cell_" + j + 'x' + i;
 		}
 	}
 }
@@ -341,6 +364,9 @@ table td:nth-child(6) {
 table tr:nth-child(3) td,
 table tr:nth-child(6) td {
 	border-bottom: 5px solid #333;		
+}
+td.highlighted {
+	background: #77EC6F;
 }
 </style>
 </head>
