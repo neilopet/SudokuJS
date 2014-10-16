@@ -44,3 +44,18 @@ function quickSort( array ) {
 	}
 	return quickSort(left).concat(pivot, quickSort(right));
 }
+
+
+function transpose( array ) {
+	return array[0].map(function(col, i) { 
+		return array.map(function(row) { 
+			return row[i];
+		})
+	});
+}
+
+function clone( array ) {
+	return JSON.parse(
+		JSON.stringify( array )
+	);
+}
