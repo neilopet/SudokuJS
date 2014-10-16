@@ -9,8 +9,16 @@
 
 function Sudoku( inmatrix ) {
 	var public = {
-		matrix       : inmatrix.slice(0),
-		cellCallback : function() {},
+
+		//////////////////////////////////////
+		//
+		//  Fields
+		//
+
+		matrix            : inmatrix.slice(0),
+		cellCallback      : function() {},
+		states		      : [],
+		cellClickCallback : function() {},
 
 		//////////////////////////////////////
 		//
@@ -18,9 +26,10 @@ function Sudoku( inmatrix ) {
 		//
 
 		init : function() {
+			var source = clone( this.matrix );
 			for (var i = 0; i < this.matrix.length; i++) {
 				for (var j = 0; j < this.matrix[i].length; j++) {
-					var val = inmatrix[i][j];
+					var val = source[i][j];
 					this.matrix[i][j] = new Cell(this, j, i, val);
 					this.matrix[i][j].setCallback( this.cellCallback );
 				}
@@ -29,6 +38,7 @@ function Sudoku( inmatrix ) {
 			this.each(function( cell ) {
 				var buddiesObj = cell.getBuddies();
 				var buddies = buddiesObj.x.concat(buddiesObj.y, buddiesObj.block);
+				cell.subscribers = [];
 				buddies.forEach(function(coords) {
 					if (coords.x == j && coords.y == i) {
 						
@@ -66,6 +76,30 @@ function Sudoku( inmatrix ) {
 		//
 		//  Methods
 		//
+
+		save : function() {
+			var matrixValues = [];
+			for (var i = 0; i < this.matrix.length; i++) {
+				matrixValues.push([]);
+				for (var j = 0; j < this.matrix[i].length; j++) {
+					matrixValues[i].push(this.getCell(j, i).getRealValue());
+				}
+			}
+			this.states.push( matrixValues );
+		},
+
+		restore : function() {
+			if (this.states.length > 0) {
+				this.matrix = this.states.pop();
+				this.init();
+				this.render( this.cellClickCallback );
+				this.refreshValues();
+			}
+		},
+
+		popState : function() {
+			this.states.pop();
+		},
 
 		each : function( callback ) {
 			for (var i = 0; i < this.matrix.length; i++) {
@@ -174,6 +208,7 @@ function Sudoku( inmatrix ) {
 		//
 
 		render : function( clickCallback ) {
+			this.cellClickCallback = clickCallback;
 			var matrix = this.matrix;
 			var table = document.getElementById('sudoku');
 			if (table == null) {
@@ -193,7 +228,7 @@ function Sudoku( inmatrix ) {
 						else {
 							td.innerHTML = val;
 						}
-						td.onclick = clickCallback;
+						td.onclick = this.cellClickCallback;
 						tr.appendChild(td);
 					}
 					tbody.appendChild(tr);
