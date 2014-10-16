@@ -53,6 +53,34 @@ function Cell( parent, x, y, initialValue ) {
 			};
 		},
 
+		getBuddyBivalueIntersects : function() {
+			if (isInt(this.getValue())
+				|| this.getValue().length != 2) {
+				return [];
+			}
+			var parent = this.getParent();
+			/* save state */
+			parent.save();
+			var myValue = this.getValue();
+			var buddiesObj = this.getBuddies();
+			var buddies = buddiesObj.x.concat(buddiesObj.y, buddiesObj.block);
+			var ret = [];
+			buddies.forEach(function(coords) {
+				var cell = parent.getCell( coords.x, coords.y );
+				var cellValue = cell.getValue();
+
+				if (cellValue.length != 2) {
+					return;
+				}
+
+				var diffValues = cellValue.diff( myValue );
+				if (diffValues.length < 2) {
+					ret.push(coords);
+				}
+			});
+			return ret;
+		},
+
 		getParent : function() {
 			return this.parent;
 		},
