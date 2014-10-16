@@ -37,6 +37,10 @@ function Cell( parent, x, y, initialValue ) {
 			return this.value;
 		},
 
+		getRealValue : function() {
+			return this.value;
+		},
+
 		getProspects : function() {
 			return this.prospects;
 		},
@@ -126,6 +130,7 @@ function Cell( parent, x, y, initialValue ) {
 			this.value = value;
 			this.sendNotification( value );
 			this.fnCallback( this );
+			//this.prospects = [];
 		},
 
 		setCallback : function( fnCallback ) {
