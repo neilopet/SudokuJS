@@ -1,0 +1,27 @@
+table {
+	border: 5px solid #000;
+	border-collapse: collapse;
+	table-layout: fixed;
+}
+table td {
+	padding: 10px;
+	border: 1px solid #333;
+	width: 50px;
+	height: 50px;
+	max-width: 50px;
+	text-align: center;
+}
+table td:nth-child(3),
+table td:nth-child(6) {
+	border-right: 5px solid #333;	
+}
+table tr:nth-child(3) td,
+table tr:nth-child(6) td {
+	border-bottom: 5px solid #333;		
+}
+td.highlighted {
+	background: #77EC6F;
+}
+.prospects {
+	font-size: 8px;
+}
