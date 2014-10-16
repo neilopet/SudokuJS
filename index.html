@@ -20,16 +20,49 @@ var matrix = [
 	[1, '', 5, '', '', '', '', 2, '']
 ];
 
+/*
+// Solvable with Forced Entry alone
+var matrix = [
+	['', '', 3, 5, '', 9, '', '', ''],
+	['', 6, '', '', '', '', '', 2, 7],
+	['', '', 8, '', '', 2, 4, 9, ''],
+	[3, '', '', '', 2, '', 7, '', 5],
+	['', '', 9, '', '', '', 8, '', ''],
+	[5, '', 2, '', 8, '', '', '', 9],
+	['', 9, 1, 4, '', '', 2, '', ''],
+	[4, 3, '', '', '', '', '', 7, ''],
+	['', '', '', 6, '', 5, 1, '', '']
+];
+*/
+
 function ready() {
 	sudoku = Sudoku(matrix);
 	sudoku.setCellCallback(function( cell ) {
 		cell.getParent().render();
 	});
 	sudoku.init();
-	sudoku.render();
+	sudoku.render(function() {
+		this.style.background = 'rgb(159, 249, 160)';
+		var buddiesObj = sudoku.getCell( this.cellIndex, this.parentNode.rowIndex ).getBuddies();
+		var buddies = buddiesObj.x.concat(buddiesObj.y, buddiesObj.block);
+		var allTds = document.getElementsByTagName('td');
+		for (var i = 0; i < allTds.length; i++) {
+			allTds[i].style.background = '#fff';
+		}
+		buddies.forEach(function(coords) {
+			var td = document.getElementById('cell_' + coords.x + 'x' + coords.y);
+			if (td != null) {
+				td.style.background = 'rgb(159, 249, 160)';
+			}
+		});
+	});
 
 	// solve
 	sudoku.solveSingles([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+	if (!sudoku.checkSolution()) {
+		sudoku.bruteForce();
+	}
 }
 
 </script>
