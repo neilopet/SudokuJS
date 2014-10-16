@@ -16,6 +16,7 @@ function Sudoku( inmatrix ) {
 		//
 		//  Constructors
 		//
+
 		init : function() {
 			for (var i = 0; i < this.matrix.length; i++) {
 				for (var j = 0; j < this.matrix[i].length; j++) {
@@ -25,16 +26,18 @@ function Sudoku( inmatrix ) {
 				}
 			}
 
-			for (var i = 0; i < this.matrix.length; i++) {
-				for (var j = 0; j < this.matrix[i].length; j++) {
-					var cell = this.getCell( j, i );
-					var buddiesObj = cell.getBuddies();
-					var buddies = buddiesObj.x.concat(buddiesObj.y, buddiesObj.block);
-					buddies.forEach(function(obj, index) {
-						cell.subscribe( obj );
-					});
-				}
-			}
+			this.each(function( cell ) {
+				var buddiesObj = cell.getBuddies();
+				var buddies = buddiesObj.x.concat(buddiesObj.y, buddiesObj.block);
+				buddies.forEach(function(coords) {
+					if (coords.x == j && coords.y == i) {
+						
+					}
+					else {
+						cell.subscribe( coords );
+					}
+				});
+			});
 		},
 
 		//////////////////////////////////////
@@ -64,37 +67,105 @@ function Sudoku( inmatrix ) {
 		//  Methods
 		//
 
+		each : function( callback ) {
+			for (var i = 0; i < this.matrix.length; i++) {
+				for (var j = 0; j < this.matrix[i].length; j++) {
+					callback( this.matrix[i][j] );
+				}
+			}
+		},
+
+		bruteForce : function() {
+			this.each(function( cell ) {
+			});
+		},
+
 		solveSingles : function( cmp ) {
 			var updated = false;
+			this.each(function( cell ) {
+				if (typeof cell.getValue().length == 'undefined') {
+					return;
+				}
+				var buddiesObj = cell.getBuddies();
+				var buddies = buddiesObj.x.concat(buddiesObj.y, buddiesObj.block);
+				var buddyValues = [];
+				buddies.forEach(function(coords, index) {
+					var val = public.getCell( coords.x, coords.y ).getValue();
+					if (typeof val.length == 'undefined') {
+						buddyValues.push( val );
+					}
+				});
+				buddyValues = quickSort(buddyValues);
+				buddyValues = unique(buddyValues);
+				var result = cmp.diff(buddyValues);
+
+				if (result.length == 1) {
+					cell.setValue( result[0] );
+					updated = true;
+				}
+			});
+			if (updated) {
+				return this.solveSingles( cmp );
+			}
+			this.refreshValues();
+			return this.matrix;
+		},
+
+		bruteForce1 : function() {
+			//  start with two bivalue buddies sharing a common value
 			for (var i = 0; i < this.matrix.length; i++) {
 				for (var j = 0; j < this.matrix[i].length; j++) {
 					var cell = this.getCell( j, i );
-					if (typeof cell.getValue().length == 'undefined') {
+					if (cell.getValue().length != 2) {
 						continue;
 					}
 					var buddiesObj = cell.getBuddies();
 					var buddies = buddiesObj.x.concat(buddiesObj.y, buddiesObj.block);
-					var buddyValues = [];
-					buddies.forEach(function(coords, index) {
-						var val = public.getCell( coords.x, coords.y ).getValue();
-						if (typeof val.length == 'undefined') {
-							buddyValues.push( val );
+					var self = this;
+					var conflicts = [];
+					buddies.forEach(function(coords) {
+						var buddyCell = self.getCell(coords.x, coords.y);
+						var buddyCellValues = buddyCell.getValue();
+						if (buddyCellValues.length == 2) {
+							var diffValues = buddyCellValues.diff(cell.getValue());
+							if (diffValues < 2) {
+								var tryValues = cell.getValues().diff(diffValues);
+								tryValues.forEach(function( v ) {
+									cell.setValue( v );
+									if (checkSolution()) {
+										return true;
+									}
+								});
+							}
 						}
 					});
-					buddyValues = quickSort(buddyValues);
-					buddyValues = unique(buddyValues);
-					var result = cmp.diff(buddyValues);
-
-					if (result.length == 1) {
-						cell.setValue( result[0] );
-						updated = true;
-					}
 				}
 			}
-			if (updated) {
-				return this.solveSingles( cmp );
+		},
+
+		refreshValues : function() {
+			this.each(function( cell ) {
+				cell.setValue( cell.getRealValue() );
+			});
+		},
+
+		checkSolution : function () {
+			return (this.check(this.matrix) 
+				&& this.check(transpose(this.matrix)));
+		},
+
+		check : function( matrix ) {
+			var rowSum = 45;
+			for (var i = 0; i < matrix[0].length; i++) {
+				var sum = 0;
+				for (var j = 0; j < matrix[i].length; j++) {
+					sum += this.getCell(j, i).getRealValue();
+				}
+				if (sum != rowSum) {
+					return false;
+				}
 			}
-			return this.matrix;
+			return true;
 		},
 
 		//////////////////////////////////////
@@ -102,12 +173,13 @@ function Sudoku( inmatrix ) {
 		//  Views
 		//
 
-		render : function() {
+		render : function( clickCallback ) {
 			var matrix = this.matrix;
 			var table = document.getElementById('sudoku');
 			if (table == null) {
 				table = document.createElement('table');
 				table.setAttribute('id', 'sudoku');
+				var tbody = document.createElement('tbody');
 				for (var i = 0; i < matrix.length; i++) {
 					var tr = document.createElement('tr');
 					tr.setAttribute('id', 'row_' + i);
@@ -121,9 +193,11 @@ function Sudoku( inmatrix ) {
 						else {
 							td.innerHTML = val;
 						}
+						td.onclick = clickCallback;
 						tr.appendChild(td);
 					}
-					table.appendChild(tr);
+					tbody.appendChild(tr);
+					table.appendChild(tbody);
 				}
 				document.body.appendChild(table);
 			}
