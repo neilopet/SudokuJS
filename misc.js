@@ -59,3 +59,9 @@ function clone( array ) {
 		JSON.stringify( array )
 	);
 }
+
+function isInt( n ){
+    return (typeof n == "number" 
+    			&& isFinite(n) 
+    			&& (n % 1) === 0);
+}
