@@ -18,12 +18,12 @@ function Cell( parent, x, y, initialValue ) {
 		//
 
 		coords      : Point(x, y),
-		oldValue    : 0,
 		value       : initialValue,
 		prospects   : [1, 2, 3, 4, 5, 6, 7, 8, 9],
 		subscribers : [],
 		parent      : parent,
 		fnCallback  : function() {},
+		states      : [],
 
 		//////////////////////////////////////
 		//
@@ -59,13 +59,16 @@ function Cell( parent, x, y, initialValue ) {
 				return [];
 			}
 			var parent = this.getParent();
-			/* save state */
-			parent.save();
 			var myValue = this.getValue();
 			var buddiesObj = this.getBuddies();
 			var buddies = buddiesObj.x.concat(buddiesObj.y, buddiesObj.block);
 			var ret = [];
+			var ourCoords = this.coords;
 			buddies.forEach(function(coords) {
+				if (coords.x == ourCoords.x 
+					&& coords.y == ourCoords.y) {
+					return;
+				}
 				var cell = parent.getCell( coords.x, coords.y );
 				var cellValue = cell.getValue();
 
@@ -75,7 +78,16 @@ function Cell( parent, x, y, initialValue ) {
 
 				var diffValues = cellValue.diff( myValue );
 				if (diffValues.length < 2) {
-					ret.push(coords);
+					var found = false;
+					for (var i = 0; i < ret.length; i++) {
+						if (ret[i].equals(coords)) {
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						ret.push(coords);
+					}
 				}
 			});
 			return ret;
@@ -154,7 +166,10 @@ function Cell( parent, x, y, initialValue ) {
 		//
 
 		setValue : function( value ) {
-			this.oldValue = this.value;
+			if (typeof value == 'undefined') {
+				return;
+			}
+			this.save();
 			this.value = value;
 			this.sendNotification( value );
 			this.fnCallback( this );
@@ -173,6 +188,19 @@ function Cell( parent, x, y, initialValue ) {
 		//
 		//  Methods
 		//
+
+		save : function() {
+			this.states.push({
+				value     : this.value,
+				prospects : this.prospects
+			});
+		},
+
+		restore : function() {
+			var state = this.states.pop();
+			this.value = state.value;
+			this.prospects = state.prospects;
+		},
 
 		sendNotification : function( message ) {
 			for (var i = 0; i < this.subscribers.length; i++) {
