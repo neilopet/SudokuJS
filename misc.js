@@ -14,7 +14,10 @@ Array.prototype.diff = function(a) {
 function Point( x, y ) {
 	return {
 		x: x, 
-		y: y
+		y: y,
+		equals : function ( p ) {
+			return (p.x == x && p.y == y);
+		}
 	};
 }
 
