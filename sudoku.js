@@ -56,6 +56,9 @@ function Sudoku( inmatrix ) {
 		//
 
 		getCell : function( x, y ) {
+			if (typeof this.matrix[y][x] == 'undefined') {
+				return new Cell([], -1, -1, 0);
+			}
 			return this.matrix[y][x];
 		},
 
@@ -89,6 +92,15 @@ function Sudoku( inmatrix ) {
 		},
 
 		restore : function() {
+			console.log('Restore Called');
+			this.each(function( cell ) {
+				cell.restore();
+			});
+			this.render( this.cellClickCallback );
+			this.refreshValues();
+		},
+
+		restoreAll : function() {
 			if (this.states.length > 0) {
 				this.matrix = this.states.pop();
 				this.init();
@@ -104,13 +116,38 @@ function Sudoku( inmatrix ) {
 		each : function( callback ) {
 			for (var i = 0; i < this.matrix.length; i++) {
 				for (var j = 0; j < this.matrix[i].length; j++) {
-					callback( this.matrix[i][j] );
+					var cb = callback( this.matrix[i][j] );
+					if (cb == -1) {
+						return;
+					}
 				}
 			}
 		},
 
 		bruteForce : function() {
+			var self = this;
 			this.each(function( cell ) {
+				var bivalues = cell.getBuddyBivalueIntersects();
+				if (bivalues.length > 0) {
+					for (var i = 0; i < bivalues.length; i++) {
+						var c = self.getCell(bivalues[i].x, bivalues[i].y);
+						var v = cell.getValue();
+						if (c.getValue().indexOf(v[0]) > -1)  {
+							cell.setValue( v[0] );
+						}
+						else {
+							cell.setValue( v[1] );
+						}
+						self.solveSingles([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+						if (self.isSolved()) {
+							if (self.checkSolution()) {
+								self.popState();
+								return true;
+							}
+						}
+					}
+					self.restore();
+				}
 			});
 		},
 
@@ -124,7 +161,11 @@ function Sudoku( inmatrix ) {
 				var buddies = buddiesObj.x.concat(buddiesObj.y, buddiesObj.block);
 				var buddyValues = [];
 				buddies.forEach(function(coords, index) {
-					var val = public.getCell( coords.x, coords.y ).getValue();
+					var c = public.getCell( coords.x, coords.y );
+					if (typeof c == 'undefined') {
+						return;
+					}
+					var val = c.getValue();
 					if (typeof val.length == 'undefined') {
 						buddyValues.push( val );
 					}
@@ -145,42 +186,21 @@ function Sudoku( inmatrix ) {
 			return this.matrix;
 		},
 
-		bruteForce1 : function() {
-			//  start with two bivalue buddies sharing a common value
-			for (var i = 0; i < this.matrix.length; i++) {
-				for (var j = 0; j < this.matrix[i].length; j++) {
-					var cell = this.getCell( j, i );
-					if (cell.getValue().length != 2) {
-						continue;
-					}
-					var buddiesObj = cell.getBuddies();
-					var buddies = buddiesObj.x.concat(buddiesObj.y, buddiesObj.block);
-					var self = this;
-					var conflicts = [];
-					buddies.forEach(function(coords) {
-						var buddyCell = self.getCell(coords.x, coords.y);
-						var buddyCellValues = buddyCell.getValue();
-						if (buddyCellValues.length == 2) {
-							var diffValues = buddyCellValues.diff(cell.getValue());
-							if (diffValues < 2) {
-								var tryValues = cell.getValues().diff(diffValues);
-								tryValues.forEach(function( v ) {
-									cell.setValue( v );
-									if (checkSolution()) {
-										return true;
-									}
-								});
-							}
-						}
-					});
-				}
-			}
-		},
-
 		refreshValues : function() {
 			this.each(function( cell ) {
 				cell.setValue( cell.getRealValue() );
 			});
+		},
+
+		isSolved : function() {
+			var solved = true;
+			this.each(function( cell ) {
+				if (cell.getValue().length > 1) {
+					solved = false;
+					return -1; // exit loop
+				}
+			});
+			return solved;
 		},
 
 		checkSolution : function () {
@@ -228,7 +248,7 @@ function Sudoku( inmatrix ) {
 						else {
 							td.innerHTML = val;
 						}
-						td.onclick = this.cellClickCallback;
+						td.onmouseover = this.cellClickCallback;
 						tr.appendChild(td);
 					}
 					tbody.appendChild(tr);
@@ -243,6 +263,9 @@ function Sudoku( inmatrix ) {
 						if (td != null) {
 							var cell = this.getCell(i, j);
 							var val = cell.getValue();
+							if (typeof val == 'undefined') {
+								continue;
+							}
 							if (typeof val.length != 'undefined') {
 								td.innerHTML = '<span class="prospects">' + val + '</span>';
 							}
